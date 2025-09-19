@@ -1,0 +1,24 @@
+/* Fondo y tipografía global */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #1E40AF; /* Azul base */
+  color: #ffffff;            /* Texto blanco */
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Titulares */
+h1, h2, h3 {
+  font-weight: bold;
+  margin-bottom: 0.5em;
+}
+
+/* Enlaces */
+a {
+  color: #93c5fd; /* Azul más claro para contraste */
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
