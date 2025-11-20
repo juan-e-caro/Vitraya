@@ -49,7 +49,7 @@ export default function Login() {
 
         {/* Opciones adicionales */}
         <div className="text-center mt-3">
-          <a href="/forgot-password" className="d-block mb-2">
+          <a href="/RecoverPassword" className="d-block mb-2">
             ¿Olvidaste tu contraseña?
           </a>
           <small>

@@ -6,6 +6,7 @@ import Products from "../pages/Products/Products";
 import Cart from "../pages/Cart/Cart";
 import AdminProducts from "../pages/Admin/AdminProducts";
 import AdminUsers from "../pages/Admin/AdminUsers";
+import PasswordReset from "../pages/Auth/RecoverPassword";
 
 export default function AppRouter() {
   return (
@@ -17,6 +18,7 @@ export default function AppRouter() {
       <Route path="/cart" element={<Cart />} />
       <Route path="/admin/products" element={<AdminProducts />} />
       <Route path="/admin/users" element={<AdminUsers />} />
+      <Route path="/RecoverPassword" element={<PasswordReset/>}/>
     </Routes>
   );
 }
