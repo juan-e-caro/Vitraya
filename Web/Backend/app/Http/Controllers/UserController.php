@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -19,10 +20,10 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string',
-            'email' => 'required|string|max:255|email|unique:users,email',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:6|max:255',
-            'role' => 'required|string|in:admin,client,vendor',
+            'role'     => 'required|string|in:admin,vendor,client',
         ]);
 
         if ($validator->fails()) {
@@ -30,11 +31,10 @@ class UserController extends Controller
         }
 
         $data = $validator->validated();
-
-        // Hash password before saving
-        $data['password'] = bcrypt($data['password']);
+        $data['password'] = Hash::make($data['password']);
 
         $user = User::create($data);
+
         return response()->json($user, 201);
     }
 
@@ -60,10 +60,10 @@ class UserController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'string',
-            'email' => 'string|max:255|email|unique:users,email,' . $id,
+            'name'     => 'string|max:255',
+            'email'    => 'string|email|max:255|unique:users,email,' . $id,
             'password' => 'string|min:6|max:255',
-            'role' => 'string|in:admin,client,vendor',
+            'role'     => 'string|in:admin,vendor,client',
         ]);
 
         if ($validator->fails()) {
@@ -73,7 +73,7 @@ class UserController extends Controller
         $data = $validator->validated();
 
         if (isset($data['password'])) {
-            $data['password'] = bcrypt($data['password']);
+            $data['password'] = Hash::make($data['password']);
         }
 
         $user->update($data);
