@@ -1,71 +1,73 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-interface LoginResponse {
-  token?: string;
-  message?: string;
-}
-
 export default function Login() {
-  const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const navigate = useNavigate(); // 👈 agregar esto
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    setErrorMessage("");
 
     try {
-      const response = await fetch("/api/login", {
+      const res = await fetch("/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
-        credentials: "include",
         body: JSON.stringify({ email, password, remember }),
       });
 
-      let data: LoginResponse;
-      try {
-        data = await response.json();
-      } catch {
-        data = { message: await response.text() };
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMessage(data.error || "Credenciales incorrectas");
+        return;
       }
 
-      if (!response.ok) {
-        throw new Error(data.message || "Error al iniciar sesión");
+      console.log("Login exitoso:", data);
+
+      // Guardar token (usa remember)
+      if (remember) {
+        localStorage.setItem("token", data.access_token);
+      } else {
+        sessionStorage.setItem("token", data.access_token);
       }
 
-      // Aquí puedes guardar token en contexto o localStorage si quieres
-      // localStorage.setItem("token", data.token || "");
+      // Guardar usuario
+      localStorage.setItem("user", JSON.stringify(data.user));
 
-      navigate("/", { replace: true }); // Redirige sin recargar
-    } catch (err: any) {
-      console.log("Error details:", err);
-      setError(err.message || "Ocurrió un error");
+      // 🔥 REDIRECCIÓN AL HOME
+      navigate("/");   // 👈 AQUÍ ESTA LA MAGIA
+
+    } catch (error: any) {
+      setErrorMessage("Error de conexión con el servidor");
+      console.error("Error:", error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
-      <div className="card shadow-lg p-4" style={{ width: "24rem" }}>
+    <div className="container d-flex justify-content-center align-items-center vh-100">
+      <div className="card p-4 shadow" style={{ width: "400px" }}>
         <h2 className="text-center mb-4">Iniciar Sesión</h2>
 
-        {error && (
-          <div className="alert alert-danger" role="alert">
-            {error}
-          </div>
+        {/* Mensaje de error */}
+        {errorMessage && (
+          <div className="alert alert-danger">{errorMessage}</div>
         )}
 
         <form onSubmit={handleSubmit}>
+
           {/* Email */}
           <div className="mb-3">
             <label htmlFor="email" className="form-label">
@@ -78,11 +80,12 @@ export default function Login() {
               placeholder="ejemplo@correo.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
             />
           </div>
 
-          {/* Contraseña */}
+          {/* Password */}
           <div className="mb-1">
             <label htmlFor="password" className="form-label">
               Contraseña
@@ -94,11 +97,12 @@ export default function Login() {
               placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
               required
             />
           </div>
 
-          {/* Mostrar/Ocultar contraseña */}
+          {/* Mostrar Contraseña */}
           <div className="form-check mb-3">
             <input
               type="checkbox"
@@ -126,7 +130,7 @@ export default function Login() {
             </label>
           </div>
 
-          {/* Botón submit */}
+          {/* Botón */}
           <button
             type="submit"
             className="btn btn-primary w-100"
@@ -134,8 +138,10 @@ export default function Login() {
           >
             {loading ? "Cargando..." : "Iniciar Sesión"}
           </button>
+
         </form>
 
+        {/* Enlaces */}
         <div className="text-center mt-3">
           <a href="/RecoverPassword" className="d-block mb-2">
             ¿Olvidaste tu contraseña?
