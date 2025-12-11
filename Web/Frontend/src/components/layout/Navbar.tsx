@@ -5,94 +5,144 @@ interface User {
   id: number;
   name: string;
   email: string;
+  role: "Client" | "Vendor" | "Admin";
 }
 
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
 
-  // Verificar si hay sesión activa
   useEffect(() => {
-    fetch("/api/user", {
-      credentials: "include", // necesario para Sanctum
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("No authenticated");
-        return res.json();
-      })
-      .then((data) => setUser(data))
-      .catch(() => setUser(null));
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) setUser(JSON.parse(storedUser));
   }, []);
 
-  // Función de logout
   const handleLogout = async () => {
-    await fetch("/logout", {
-      method: "POST",
-      credentials: "include",
-    });
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    if (token) {
+      await fetch("/api/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
+
     setUser(null);
-    navigate("/"); // redirige a home después de cerrar sesión
+    navigate("/");
   };
 
-  return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
-      <div className="container-fluid">
-        <span className="navbar-brand fw-bold">Vitraya</span>
+  const leftButtonStyle = "btn btn-light text-primary rounded-pill me-2 d-flex align-items-center";
 
+  return (
+    <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow py-4">
+      <div className="container-fluid">
+
+        {/* LOGO */}
+        <Link className="navbar-brand fw-bold fs-3 text-light" to="/">
+          Vitraya
+        </Link>
+
+        {/* TOGGLER */}
         <button
           className="navbar-toggler"
           type="button"
           data-bs-toggle="collapse"
           data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
         >
           <span className="navbar-toggler-icon"></span>
         </button>
 
+        {/* NAVBAR CONTENT */}
         <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-            <li className="nav-item">
-              <Link className="nav-link" to="/">
-                <i className="bi bi-house"></i> Inicio
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link" to="/products">
-                <i className="bi bi-grid"></i> Productos
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link" to="/cart">
-                <i className="bi bi-cart"></i> Carrito
-              </Link>
-            </li>
-          </ul>
+          
+          {/* LEFT SIDE LINKS AS BUTTONS */}
+          <div className="d-flex me-auto">
+            {/* Inicio: visible para todos */}
+            <Link className={leftButtonStyle} to="/">
+              <i className="bi bi-house-door me-1"></i> Inicio
+            </Link>
 
-          <div className="d-flex align-items-center">
+            {/* Admin */}
+            {user?.role === "Admin" && (
+              <>
+                <Link className={leftButtonStyle} to="/admin/products">
+                  <i className="bi bi-box-seam me-1"></i> Productos (Admin)
+                </Link>
+                <Link className={leftButtonStyle} to="/admin/users">
+                  <i className="bi bi-people me-1"></i> Usuarios
+                </Link>
+              </>
+            )}
+
+            {/* Vendor */}
+            {user?.role === "Vendor" && (
+              <Link className={leftButtonStyle} to="/vendor/products">
+                <i className="bi bi-bag me-1"></i> Mis Productos
+              </Link>
+            )}
+
+            {/* Client */}
+            {user?.role === "Client" && (
+              <>
+                <Link className={leftButtonStyle} to="/products">
+                  <i className="bi bi-box me-1"></i> Productos
+                </Link>
+                <Link className={leftButtonStyle} to="/cart">
+                  <i className="bi bi-cart me-1"></i> Carrito
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* SEARCH BAR */}
+          <form className="d-flex me-3" style={{ width: "250px" }}>
+            <input
+              className="form-control rounded-pill px-3"
+              type="search"
+              placeholder="Buscar productos..."
+            />
+          </form>
+
+          {/* RIGHT SIDE (ACCOUNT) */}
+          <div className="d-flex align-items-center gap-2">
+
             {user ? (
               <>
-                <Link className="btn btn-secondary me-2" to="/profile">
-                  <i className="bi bi-person-circle"></i> Perfil
+                <Link
+                  className="btn btn-outline-light rounded-pill d-flex align-items-center"
+                  to="/profile"
+                >
+                  <i className="bi bi-person-circle me-1"></i> {user.name}
                 </Link>
+
                 <button
-                  className="btn btn-outline-light"
+                  className="btn btn-outline-light rounded-pill d-flex align-items-center"
                   onClick={handleLogout}
                 >
-                  <i className="bi bi-box-arrow-right"></i> Cerrar Sesión
+                  <i className="bi bi-box-arrow-right me-1"></i> Salir
                 </button>
               </>
             ) : (
               <>
-                <Link className="btn btn-outline-light me-2" to="/login">
-                  <i className="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+                <Link
+                  className="btn btn-outline-light rounded-pill d-flex align-items-center"
+                  to="/login"
+                >
+                  <i className="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión
                 </Link>
-                <Link className="btn btn-primary" to="/register">
-                  <i className="bi bi-person-plus"></i> Registrarse
+                <Link
+                  className="btn btn-outline-light rounded-pill d-flex align-items-center"
+                  to="/register"
+                >
+                  <i className="bi bi-person-plus me-1"></i> Registrarse
                 </Link>
               </>
             )}
+
           </div>
         </div>
       </div>

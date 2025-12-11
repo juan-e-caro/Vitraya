@@ -1,111 +1,169 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Modal, Button, Form } from "react-bootstrap";
 
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  stock: number;
+}
+
 export default function AdminProducts() {
-  // Estado simulado para productos (más adelante vendrá del backend)
-  const [products, setProducts] = useState([
-    { id: 1, name: "Producto 1", price: 20000, stock: 10 },
-    { id: 2, name: "Producto 2", price: 35000, stock: 5 },
-  ]);
-
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  // Manejar abrir modal
-  const handleOpenModal = (product: any = null) => {
-    setEditingProduct(product);
-    setShowModal(true);
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+  // --------------------------
+  //   Cargar productos
+  // --------------------------
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/ListProduct", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Error al cargar productos");
+
+      const data = await res.json();
+      setProducts(data);
+    } catch (err) {
+      setError("No se pudieron cargar los productos");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Manejar guardar producto
-  const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  // --------------------------
+  //   Guardar producto (solo actualizar)
+  // --------------------------
+  const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!editingProduct) return; // No crear nuevos productos
+
     const form = event.currentTarget as HTMLFormElement;
     const data = new FormData(form);
-    const newProduct = {
-      id: editingProduct ? editingProduct.id : Date.now(),
+    const payload = {
       name: data.get("name") as string,
       price: Number(data.get("price")),
       stock: Number(data.get("stock")),
     };
 
-    if (editingProduct) {
-      // Editar
-      setProducts(
-        products.map((p) => (p.id === editingProduct.id ? newProduct : p))
+    try {
+      const res = await fetch(
+        `http://localhost:8000/api/UpdateProduct/${editingProduct.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
       );
-    } else {
-      // Agregar
-      setProducts([...products, newProduct]);
+
+      if (!res.ok) throw new Error("Error al guardar producto");
+
+      fetchProducts();
+      setShowModal(false);
+    } catch (err) {
+      alert("No se pudo guardar el producto");
     }
-    setShowModal(false);
   };
 
-  // Manejar eliminar producto
-  const handleDelete = (id: number) => {
-    if (confirm("¿Seguro que deseas eliminar este producto?")) {
+  // --------------------------
+  //   Eliminar producto
+  // --------------------------
+  const handleDelete = async (id: number) => {
+    if (!confirm("¿Seguro que deseas eliminar este producto?")) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:8000/api/DeleteProduct/${id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) throw new Error("Error eliminando producto");
       setProducts(products.filter((p) => p.id !== id));
+    } catch (err) {
+      alert("No se pudo eliminar el producto");
     }
+  };
+
+  const handleOpenModal = (product: Product) => {
+    setEditingProduct(product); // Solo abrir modal si es edición
+    setShowModal(true);
   };
 
   return (
     <div className="container mt-4">
-      <h1 className="mb-4">Administrar Productos</h1>
+      <h1 className="mb-4 text-center">Administrar Productos</h1>
 
-      <div className="text-end mb-3">
-        <button
-          className="btn btn-primary"
-          onClick={() => handleOpenModal()}
-        >
-          + Agregar Producto
-        </button>
-      </div>
+      {loading && <p className="text-center">Cargando productos...</p>}
+      {error && <p className="text-danger text-center">{error}</p>}
 
-      <table className="table table-striped table-bordered align-middle">
-        <thead className="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Precio</th>
-            <th>Stock</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((p) => (
-            <tr key={p.id}>
-              <td>{p.id}</td>
-              <td>{p.name}</td>
-              <td>${p.price.toLocaleString()}</td>
-              <td>{p.stock}</td>
-              <td>
-                <div className="d-flex gap-2">
-                  <button
-                    className="btn btn-warning btn-sm"
-                    onClick={() => handleOpenModal(p)}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleDelete(p.id)}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </td>
+      {!loading && !error && (
+        <table className="table table-striped table-bordered align-middle">
+          <thead className="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th>Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {products.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center py-3">
+                  No hay productos registrados.
+                </td>
+              </tr>
+            ) : (
+              products.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.id}</td>
+                  <td>{p.name}</td>
+                  <td>${p.price.toLocaleString()}</td>
+                  <td>{p.stock}</td>
+                  <td>
+                    <div className="d-flex gap-2">
+                      <button
+                        className="btn btn-warning btn-sm"
+                        onClick={() => handleOpenModal(p)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDelete(p.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      )}
 
-      {/* Modal de agregar/editar */}
+      {/* Modal editar */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Form onSubmit={handleSave}>
           <Modal.Header closeButton>
-            <Modal.Title>
-              {editingProduct ? "Editar Producto" : "Agregar Producto"}
-            </Modal.Title>
+            <Modal.Title>Editar Producto</Modal.Title>
           </Modal.Header>
           <Modal.Body>
             <Form.Group className="mb-3">
